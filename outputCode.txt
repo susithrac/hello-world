@@ -1,0 +1,44 @@
+const fs = require('fs');
+
+function getCount(node, actualCount, idMap, mainDict) {
+    for (let riskIdx = 0; riskIdx < node.childRisks.length; riskIdx++) {
+        if (node.childRisks[riskIdx].riskItem.status === "Retired") {
+            continue;
+        }
+        actualCount.riskCount += 1;
+        const impactLevel = parseInt(node.childRisks[riskIdx].riskItem.impactLevel.slice(-1));
+        if (impactLevel === 6 || impactLevel === 7) {
+            actualCount.riskCountL6L7 += 1;
+        } else if (impactLevel === 4 || impactLevel === 5) {
+            actualCount.riskCountL4L5 += 1;
+        }
+        if (node.childRisks[riskIdx].riskItem.likelihoodAssessment === "Elevated") {
+            actualCount.riskCountElevated += 1;
+        }
+    }
+    for (let childIdx = 0; childIdx < node.childThemes.length; childIdx++) {
+        actualCount = getCount(mainDict.data[idMap[node.childThemes[childIdx].id]], actualCount, idMap, mainDict);
+    }
+    return actualCount;
+}
+
+function main() {
+    const data = fs.readFileSync("test.json", "utf-8");
+    const mainDict = JSON.parse(data);
+    const idMap = {};
+    for (let nodeIdx = 0; nodeIdx < mainDict.data.length; nodeIdx++) {
+        idMap[mainDict.data[nodeIdx].theme.id] = nodeIdx;
+    }
+    for (let nodeIdx = 0; nodeIdx < mainDict.data.length; nodeIdx++) {
+        const trueCount = {
+            riskCount: mainDict.data[nodeIdx].theme.riskCount,
+            riskCountL6L7: mainDict.data[nodeIdx].theme.riskCountL6L7,
+            riskCountL4L5: mainDict.data[nodeIdx].theme.riskCountL4L5,
+            riskCountElevated: mainDict.data[nodeIdx].theme.riskCountElevated
+        };
+        const actualCount = getCount(mainDict.data[nodeIdx], trueCount, idMap, mainDict);
+        console.log(actualCount);
+    }
+}
+
+main();
